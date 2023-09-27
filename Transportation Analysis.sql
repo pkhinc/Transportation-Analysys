@@ -1,3 +1,7 @@
+-- You work in a shipping company called Sea Lions
+-- Sea Lions takes orders from customers  - you can order transporation cy-cy (from one port to another)
+-- You can also order from Sea Lions inland transporation to/from port 
+
 CREATE database transportation;
 
 show databases;
@@ -11,7 +15,7 @@ create table sea_freight (
     sea_price decimal(7,2) not null,
     currency varchar(50) not null,
     result_period datetime not null,
-    vendor varchar(150) not null,
+    sea_vendor varchar(150) not null,
     container_type varchar(150) not null,
     PRIMARY KEY (ID)
     );
@@ -23,7 +27,7 @@ create table inland_freight (
     inl_price decimal(7,2) not null,
     currency varchar(50) not null,
     result_period datetime not null,
-    vendor varchar(150) not null,
+    inl_vendor varchar(150) not null,
     container_type varchar(150) not null,
     PRIMARY KEY (ID)
     );
@@ -47,7 +51,7 @@ drop table sea_freight;
 drop  table inland_freight;
     
 insert into sea_freight 
-( POL, POD, sea_price, currency, result_period, vendor, container_type)
+( POL, POD, sea_price, currency, result_period, sea_vendor, container_type)
 values
 ('Shanghai', 'Gdynia', 1500, 'USD', '2023-06-30', 'EmSiki', 20),
 ('Reykjavik', 'Helsinborg', 1800, 'EUR', '2023-06-15', 'Hapali', 40),
@@ -63,14 +67,14 @@ values
 select * from sea_freight;
 
 insert into inland_freight
-(start_point, end_point, inl_price, currency, result_period, vendor, container_type)
+(start_point, end_point, inl_price, currency, result_period, inl_vendor, container_type)
 values
 ('Helsinborg', 'Halmstad', 300, 'EUR', '2023-06-17', 'SE_Trucker', 40),
 ( 'New York', 'Allentown', 250, 'USD', '2023-07-20', 'US_Trucker', 40),
-( 'Hamburg', 'Prague', 550, 'USD', '2023-08-20', 'DE_Trucker', 20),
+( 'Hamburg', 'Prague', 550, 'USD', '2023-08-20', 'DE_Trucker', 40),
 ( 'Gdynia', 'Wejherowo', 150, 'USD', '2023-09-10', 'PL_Trucker', 20),
 ( 'Rauma', 'Tampere', 550, 'EUR', '2023-08-18', 'FI_Trucker', 20),
-( 'Rotterdam', 'Dordrecht', 230, 'USD', '2023-06-16', 'NL_Trucker', 40),
+( 'Rotterdam', 'Prague', 230, 'USD', '2023-06-16', 'DE_Trucker', 40),
 ( 'Gotheborg', 'Halmstad', 450, 'EUR', '2023-07-18', 'SE_Trucker', 40);
 
 select * from inland_freight;
@@ -78,19 +82,45 @@ select * from inland_freight;
 insert into customer_order
 (customer, total_price, currency, Inl_ID, Sea_ID)
 values
+('Sabino',  1500, 'USD', null, 1),
 ('Swedes',  2180, 'EUR', 1, 2),
 ('Pesese',  3000, 'USD', 2, 3),
 ('Pesese',  2830, 'USD', 3, 4),
 ('Sabino',  1530, 'USD', 4, 5),
 ('Finala',  3250, 'EUR', 5, 6),
 ('Pesese',  2680, 'USD', 6, 7),
-('Swedes',  3000, 'EUR', 7, 9);
+('Finala',  1500, 'USD', null, 8),
+('Swedes',  3000, 'EUR', 7, 9),
+('Sabino',  2800, 'USD', null, 10);
 
 select * from customer_order;
+
+-- Select all orders which have additional inland leg 
 
 select customer, POL, POD, end_point, total_price, sea_price, inl_price 
 from customer_order
 join sea_freight
 	on sea_freight.ID = customer_order.Sea_ID
 join inland_freight
+	on inland_freight.ID = customer_order.Inl_ID
+group by customer, POL, POD, end_point, total_price, sea_price, inl_price 
+order by total_price;
+
+-- Calculate which on which sea vendor shipping company Sea Lions adds highest profit
+select customer, sea_vendor, POL, POD, end_point, total_price, sea_price, inl_price, (total_price - (sea_price + inl_price)) as profit
+from customer_order
+join sea_freight
+	on sea_freight.ID = customer_order.Sea_ID
+join inland_freight
+	on inland_freight.ID = customer_order.Inl_ID
+group by customer, sea_vendor, POL, POD, end_point, total_price, sea_price, inl_price
+order by profit DESC;
+
+-- Select all orders - also these ones without inland leg
+    
+select customer, POL, POD, end_point
+from sea_freight
+left join customer_order
+	on sea_freight.ID = customer_order.Sea_ID
+left join inland_freight
 	on inland_freight.ID = customer_order.Inl_ID;
